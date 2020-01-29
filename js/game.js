@@ -15,14 +15,16 @@ var restBlockCount;
 var grid;
 var isGameStarted;
 
-// start or restart a game
-function init_game() {
+/** 
+ * start or restart a game
+ */
+function game_init() {
   document.getElementById('grid').innerHTML = function () {
     let gridHtml = '';
     for (let i = 0; i < row; i++) {
       gridHtml += '<tr>';
       for (let j = 0; j < col; j++) {
-        gridHtml += '<td><span class="blocks" onmouseup="block_click(' + i + ',' + j + ',event)"></span></td>';
+        gridHtml += '<td><span class="blocks" onmouseup="block_click(' + i + ',' + j + ')"></span></td>';
       }
       gridHtml += '</tr>';
     }
@@ -36,11 +38,11 @@ function init_game() {
       if (i % col === 0) {
         grid.push([]);
       }
+      blocks[i].x = Math.floor(i / col);
+      blocks[i].y = i % col;
       blocks[i].isMine = false;
       blocks[i].count = 0;
-      blocks[i].isOpen = false;
-      blocks[i].innerHTML = '';
-      blocks[i].style.backgroundColor = "white";
+      change_status(blocks[i], 'unopened');
       grid[parseInt(i / col)].push(blocks[i]);
     }
     return grid;
@@ -50,140 +52,153 @@ function init_game() {
 }
 
 /**
+ * act when game loses.
+ */
+function game_lose() {
+  for (let i = 0; i < row; i++) {
+    for (let j = 0; j < col; j++) {
+      block_visualize(grid[i][j]);
+    }
+  }
+  document.getElementById('restart').innerHTML = EMOJI_LOSE;
+}
+
+
+/**
+ * act when game wins. 
+ */
+function game_win() {
+  document.getElementById('restart').innerHTML = EMOJI_WIN;
+}
+
+/**
+ * change the status of the block.
+ * status are: 'unopened', 'flagged', 'number', 'mine', 'flagged but not mine'.
+ */
+function change_status(block, sta) {
+  block.status = sta;
+  if (sta === 'unopened') {
+    block.style.backgroundColor = "white";
+    block.innerHTML = '';
+  } else if (sta === 'flagged') {
+    block.style.backgroundColor = "white";
+    block.innerHTML = EMOJI_FLAG;
+  } else if (sta === 'number') {
+    block.style.backgroundColor = "silver";
+    block.innerHTML = block.count;
+  } else if (sta === 'mine') {
+    block.style.backgroundColor = "silver";
+    block.innerHTML = EMOJI_MINE;
+  } else if (sta === 'flagged but not mine') {
+    block.style.backgroundColor = "silver";
+    block.innerHTML = EMOJI_ERROR;
+  } else {
+    Error("No such a status!");
+  }
+}
+
+/**
  * return value: Array.
  * returns all blocks around.
  */
-function get_neighbor_block(grid, x, y) {
+function get_neighbor_block(x, y) {
   let direction = [[0, 1], [0, -1], [1, -1], [1, 0], [1, 1], [-1, -1], [-1, 0], [-1, 1]].filter(function (dir_array) {
     return 0 <= x + dir_array[0] && x + dir_array[0] < row && 0 <= y + dir_array[1] && y + dir_array[1] < col;
   });
   return direction.map(function (dir_array) { return grid[x + dir_array[0]][y + dir_array[1]] })
 }
 
-function block_click(x, y, event) {
-  function visualize(block) {
-    if (block.isOpen) {
-      return;
-    }
-    block.isOpen = true;
-    restBlockCount--;
-    block.style.backgroundColor = "silver";
+function block_visualize(block) {
+  if (block.status === 'unopened') {
     if (block.isMine) {
-      if (block.innerHTML != EMOJI_FLAG) {
-        block.innerHTML = EMOJI_MINE;
-      }
+      change_status(block, 'mine');
     } else {
-      if (block.innerHTML == EMOJI_FLAG) {
-        block.innerHTML = EMOJI_ERROR;
-      } else {
-        block.innerHTML = block.count;
-      }
+      change_status(block, 'number');
     }
-  }
-  function open(i, j) {
-    // console.log("NMSL OPEN_AROUND NMN");
-    if (0 <= i && i < row && 0 <= j && j < col) {
-      // console.log("THAT'S NICE");
-
-      if (grid[i][j].isOpen || grid[i][j].innerHTML === EMOJI_FLAG) {
-        return;
-      }
-      visualize(grid[i][j]);
-      // console.log("THAT'S RIGHT");
-      if (grid[i][j].count != 0) {
-        return;
-      }
-      // console.log("THAT'S GOOD");
-      open_around(i, j);
+  } else if (block.status === 'flagged') {
+    if (!block.isMine) {
+      change_status(block, 'flagged but not mine');
     }
-  }
-  function open_around(i, j) {
-    open(i + 1, j);
-    open(i + 1, j - 1);
-    open(i + 1, j + 1);
-    open(i, j - 1);
-    open(i, j + 1);
-    open(i - 1, j);
-    open(i - 1, j - 1);
-    open(i - 1, j + 1);
-  }
-
-  let block = grid[x][y];
-
-  if (event.button === 0) {
-    if (block.isOpen) {
-      return;
-    }
-    if (!isGameStarted) {
-      spawn_mine(x, y);
-      isGameStarted = true;
-    }
-    if (block.isMine) {
-      // open all
-      for (let i = 0; i < row; i++) {
-        for (let j = 0; j < col; j++) {
-          visualize(grid[i][j]);
-          document.getElementById('restart').innerHTML = EMOJI_LOSE;
-        }
-      }
-    } else {
-      open(x, y);
-    }
-  } else if (event.button === 1) {
-    if (!block.isOpen) {
-      return;
-    }
-    function is_flag(i, j) {
-      if (0 <= i && i < row && 0 <= j && j < col) {
-        return grid[i][j].innerHTML === EMOJI_FLAG;
-      }
-    }
-    let cnt = 0;
-    if (is_flag(x + 1, y)) {
-      cnt++;
-    }
-    if (is_flag(x + 1, y - 1)) {
-      cnt++;
-    }
-    if (is_flag(x + 1, y + 1)) {
-      cnt++;
-    }
-    if (is_flag(x, y - 1)) {
-      cnt++;
-    }
-    if (is_flag(x, y + 1)) {
-      cnt++;
-    }
-    if (is_flag(x - 1, y)) {
-      cnt++;
-    }
-    if (is_flag(x - 1, y - 1)) {
-      cnt++;
-    }
-    if (is_flag(x - 1, y + 1)) {
-      cnt++;
-    }
-    console.log(cnt + " NMSL");
-    if (cnt === block.count) {
-      open_around(x, y);
-    }
-  } else if (event.button === 2) {
-    if (block.isOpen) {
-      return;
-    }
-    if (block.innerHTML !== EMOJI_FLAG) {
-      block.innerHTML = EMOJI_FLAG;
-    } else {
-      block.innerHTML = '';
-    }
-  }
-  if (restBlockCount === mineCount) {
-    document.getElementById('restart').innerHTML = EMOJI_WIN;
-
   }
 }
 
-function spawn_mine(x_ini, y_ini) {
+function block_open(block) {
+  if (block.status !== 'unopened') {
+    return true;
+  }
+  block_visualize(block);
+  if (block.isMine) {
+    return false;
+  }
+  if (block.count === 0) {
+    if (!block_open_around(block)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function block_open_around(block) {
+  neighbors = get_neighbor_block(block.x, block.y);
+  for (let nb of neighbors) {
+    if (!block_open(nb)) {
+      return false;
+    }
+  }
+  return true;
+}
+/**
+ * act when click the button
+ */
+function block_click(x, y) {
+  let block = grid[x][y];
+  if (event.button === 0) { // left button
+    if (block.status !== 'unopened') {
+      return;
+    }
+    if (!isGameStarted) {
+      generate_mine(x, y);
+      isGameStarted = true;
+    }
+    if (!block_open(block)) {
+      game_lose();
+      return;
+    }
+  } else if (event.button === 1) { // middle button
+    if (block.status === 'unopened') {
+      return;
+    }
+    neighborBlock = get_neighbor_block(x, y);
+    neighborBlock = neighborBlock.filter(function (block) { 
+      return block.status === 'flagged'; 
+    });
+    if (neighborBlock.length === block.count) {
+      if (!block_open_around(block)) {
+        game_lose();
+        return;
+      }
+    }
+  } else if (event.button === 2) { // right button
+    if (block.status !== 'unopened') {
+      return;
+    }
+    if (block.status !== 'flagged') {
+      change_status(block, 'flagged');
+    } else {
+      change_status(block, 'unopened');
+    }
+  }
+  // when game is over. 
+  if (restBlockCount === mineCount) {
+    game_win();
+  }
+}
+
+
+/**
+ * generate map when first click.
+ */
+function generate_mine(x_ini, y_ini) {
   function randomNum(minNum, maxNum) { return parseInt(Math.random() * (maxNum - minNum + 1) + minNum, 10); }
   let count = mineCount;
   while (count > 0) {
@@ -197,7 +212,7 @@ function spawn_mine(x_ini, y_ini) {
   for (let i = 0; i < row; i++) {
     for (let j = 0; j < col; j++) {
       if (grid[i][j].isMine) {
-        blocks = get_neighbor_block(grid, i, j);
+        blocks = get_neighbor_block(i, j);
         for (let b of blocks) {
           b.count++;
         }
