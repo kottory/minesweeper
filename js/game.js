@@ -42,7 +42,7 @@ function game_init() {
       blocks[i].y = i % col;
       blocks[i].isMine = false;
       blocks[i].count = 0;
-      change_status(blocks[i], 'unopened');
+      block_change_status(blocks[i], 'unopened');
       grid[parseInt(i / col)].push(blocks[i]);
     }
     return grid;
@@ -75,7 +75,7 @@ function game_win() {
  * change the status of the block.
  * status are: 'unopened', 'flagged', 'number', 'mine', 'flagged but not mine'.
  */
-function change_status(block, sta) {
+function block_change_status(block, sta) {
   block.status = sta;
   if (sta === 'unopened') {
     block.style.backgroundColor = "white";
@@ -101,7 +101,9 @@ function change_status(block, sta) {
  * return value: Array.
  * returns all blocks around.
  */
-function get_neighbor_block(x, y) {
+function block_get_neighbor(block) {
+  x = block.x;
+  y = block.y;
   let direction = [[0, 1], [0, -1], [1, -1], [1, 0], [1, 1], [-1, -1], [-1, 0], [-1, 1]].filter(function (dir_array) {
     return 0 <= x + dir_array[0] && x + dir_array[0] < row && 0 <= y + dir_array[1] && y + dir_array[1] < col;
   });
@@ -111,13 +113,13 @@ function get_neighbor_block(x, y) {
 function block_visualize(block) {
   if (block.status === 'unopened') {
     if (block.isMine) {
-      change_status(block, 'mine');
+      block_change_status(block, 'mine');
     } else {
-      change_status(block, 'number');
+      block_change_status(block, 'number');
     }
   } else if (block.status === 'flagged') {
     if (!block.isMine) {
-      change_status(block, 'flagged but not mine');
+      block_change_status(block, 'flagged but not mine');
     }
   }
 }
@@ -139,7 +141,7 @@ function block_open(block) {
 }
 
 function block_open_around(block) {
-  neighbors = get_neighbor_block(block.x, block.y);
+  neighbors = block_get_neighbor(block);
   for (let nb of neighbors) {
     if (!block_open(nb)) {
       return false;
@@ -157,7 +159,7 @@ function block_click(x, y) {
       return;
     }
     if (!isGameStarted) {
-      generate_mine(x, y);
+      game_generate_mine(x, y);
       isGameStarted = true;
     }
     if (!block_open(block)) {
@@ -168,7 +170,7 @@ function block_click(x, y) {
     if (block.status === 'unopened') {
       return;
     }
-    neighborBlock = get_neighbor_block(x, y);
+    neighborBlock = block_get_neighbor(block);
     neighborBlock = neighborBlock.filter(function (block) { 
       return block.status === 'flagged'; 
     });
@@ -183,12 +185,12 @@ function block_click(x, y) {
       return;
     }
     if (block.status !== 'flagged') {
-      change_status(block, 'flagged');
+      block_change_status(block, 'flagged');
     } else {
-      change_status(block, 'unopened');
+      block_change_status(block, 'unopened');
     }
   }
-  // when game is over. 
+  // when game is over.
   if (restBlockCount === mineCount) {
     game_win();
   }
@@ -198,7 +200,7 @@ function block_click(x, y) {
 /**
  * generate map when first click.
  */
-function generate_mine(x_ini, y_ini) {
+function game_generate_mine(x_ini, y_ini) {
   function randomNum(minNum, maxNum) { return parseInt(Math.random() * (maxNum - minNum + 1) + minNum, 10); }
   let count = mineCount;
   while (count > 0) {
@@ -212,7 +214,7 @@ function generate_mine(x_ini, y_ini) {
   for (let i = 0; i < row; i++) {
     for (let j = 0; j < col; j++) {
       if (grid[i][j].isMine) {
-        blocks = get_neighbor_block(i, j);
+        blocks = block_get_neighbor(grid[i][j]);
         for (let b of blocks) {
           b.count++;
         }
