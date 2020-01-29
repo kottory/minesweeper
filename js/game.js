@@ -181,12 +181,9 @@ function block_click(x, y) {
       }
     }
   } else if (event.button === 2) { // right button
-    if (block.status !== 'unopened') {
-      return;
-    }
-    if (block.status !== 'flagged') {
+    if (block.status === 'unopened') {
       block_change_status(block, 'flagged');
-    } else {
+    } else if (block.status === 'flagged') {
       block_change_status(block, 'unopened');
     }
   }
